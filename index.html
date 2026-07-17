@@ -37,8 +37,8 @@
 </div>
 
 <script>
-    // 💡 あなたのAPI Keyをあらかじめ設定しました
-    const FAL_KEY = "05718238-183d-4e54-8896-7d0be9908c72:b1721fe3ba30c7c3fcc6a389fef52034"; 
+    // 💡 あなたのNovita AI用API Keyを設定しました（自動折り返しに注意）
+    const NOVITA_KEY = "sk_kebyLa2DNoekQ6WFultHE_MZ2PFyYNF8hD8-ynpm4yE"; 
 
     async function generateImage() {
         const promptInput = document.getElementById("prompt").value;
@@ -52,58 +52,43 @@
         resultImg.style.display = "none";
 
         try {
-            // Fal.aiのPony Diffusion V6モデルを呼び出す
-            const response = await fetch("https://fal.run", {
+            // Novita AIのChilloutMixモデルを呼び出す
+            const response = await fetch("https://novita.ai", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Key ${FAL_KEY}`,
+                    "Authorization": `Bearer ${NOVITA_KEY}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    prompt: promptInput,
-                    negative_prompt: negativeInput,
-                    image_size: "portrait_4_3",
-                    num_inference_steps: 25,
-                    enable_safety_checker: false
+                    request: {
+                        model_name: "chilloutmix_NiPrunedFp32Fix_20245.safetensors",
+                        prompt: promptInput,
+                        negative_prompt: negativeInput,
+                        width: 512,
+                        height: 768,
+                        image_num: 1,
+                        steps: 20,
+                        seed: -1,
+                        clip_skip: 2,
+                        guidance_scale: 7.5
+                    }
                 })
             });
 
             const data = await response.json();
             
-            if (data.request_id) {
-                checkStatus(data.request_id);
-            } else if (data.images && data.images[0]) {
-                showImage(data.images[0].url);
+            // Novita AIの応答データから画像URLを正しく取得
+            if (data.images && data.images.length > 0 && data.images[0].image_url) {
+                showImage(data.images[0].image_url);
             } else {
                 throw new Error("生成に失敗しました");
             }
 
         } catch (error) {
             console.error(error);
-            statusDiv.innerText = "エラーが発生しました。設定や呪文を確認してください。";
+            statusDiv.innerText = "エラーが発生しました。通信環境や呪文を確認してください。";
             btn.disabled = false;
         }
-    }
-
-    async function checkStatus(requestId) {
-        const statusDiv = document.getElementById("status");
-        const btn = document.getElementById("generate-btn");
-        
-        const interval = setInterval(async () => {
-            const response = await fetch(`https://fal.run/requests/${requestId}`, {
-                headers: { "Authorization": `Key ${FAL_KEY}` }
-            });
-            const data = await response.json();
-            
-            if (data.status === "COMPLETED") {
-                clearInterval(interval);
-                showImage(data.images[0].url);
-            } else if (data.status === "FAILED") {
-                clearInterval(interval);
-                statusDiv.innerText = "生成に失敗しました。";
-                btn.disabled = false;
-            }
-        }, 2000);
     }
 
     function showImage(url) {
